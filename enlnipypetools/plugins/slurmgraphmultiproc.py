@@ -120,8 +120,8 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
             - return: A string representing this job to be displayed by SLURM
             """
             max_job_idx = min(len(job_numbers_list), 5)
-            job_numbers = reduce(lambda a,b: a + ',' + b, list(map(lambda jobnumber: str(jobnumber), job_numbers_list[:max_job_idx])))
-            nodes = reduce(lambda a, b: a + ',' + b,
+            job_numbers = reduce(lambda a,b: a + '_' + b, list(map(lambda jobnumber: str(jobnumber), job_numbers_list[:max_job_idx])))
+            nodes = reduce(lambda a, b: a + '_' + b,
                                  list(map(lambda jobnumber: str(nodeslist[jobnumber]._id), job_numbers_list[:max_job_idx])))
             job_name = 'j{0}_{1}_{2}'.format(partition_number, job_numbers, nodes)
             # Condition job_name to be a valid bash identifier (i.e. - is invalid)
