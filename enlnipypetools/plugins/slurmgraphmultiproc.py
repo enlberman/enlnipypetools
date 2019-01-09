@@ -21,6 +21,28 @@ COMMAND = BASE_COMMAND + IMPORTS + START_PROCESSES
 Args for the command go in as a comma separated string of files to run. e.g. "some_script.py,another_script.py"
 """
 
+"""
+This is untested code to send the pipeline graph to a remote cluster using SLURM and multiprocessing.
+The graph nodes are partitioned such that each set in the partition has no dependencies on its own member nodes. 
+There is no constraint on how each partition set depends on nodes in other partition sets.
+
+Partition sets are further broken up into batches which can be run in parallel on a multi-core machine using the multiprocessing library.
+
+Each individual batch is schedule on a remote cluster using SLURM.
+
+Below is an example of how to use this plugin to run a nipype workflow:
+
+from enlnipypetools.plugins.slurmgraphmultiproc import SLURMGraphMultiProcPlugin
+workflow.run(plugin=SLURMGraphMultiProcPlugin(plugin_args=
+{
+    'template': "#!/bin/bash\n#SBATCH --partition=<some-partition>\n#SBATCH --nodes=1\n#SBATCH --ntasks-per-node=1\n#SBATCH --mem-per-cpu=500",
+    'cores_per_compute_node': 16,
+    'mem_per_compute_node_mb': 1000,
+    'max_mem_per_task_mb': 450,
+}))
+
+"""
+
 
 class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
     def __init__(self, **kwargs):
@@ -31,6 +53,7 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
                 self._mem_per_compute_node: int = kwargs['plugin_args']['mem_per_compute_node_mb']
             if 'max_mem_per_task_mb' in kwargs['plugin_args']:
                 self._max_mem_per_task: int = kwargs['plugin_args']['max_mem_per_task_mb']
+                # the maximum amount of memory any one node is expected to use.
         super().__init__(**kwargs)
 
     def calculate_job_partition(self, dependencies: dict):
