@@ -6,13 +6,13 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name="enlnipypetools",
     version="0.0.1",
-    author="Andrwe Stier",
+    author="Andrew Stier",
     author_email="andrewstier@uchicago.edu",
     description="Tools for nipype",
-    # long_description=long_description,
-    # long_description_content_type="text/markdown",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     url="https://github.com/enlberman/enlnipypetools",
-    packages=setuptools.find_packages(),
+    packages=['enlnipypetools', 'enlnipypetools.plugins'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
