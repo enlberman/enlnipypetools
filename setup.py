@@ -4,14 +4,14 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="example_pkg",
+    name="enlnipypetools",
     version="0.0.1",
-    author="Example Author",
-    author_email="author@example.com",
-    description="A small example package",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/pypa/sampleproject",
+    author="Andrwe Stier",
+    author_email="andrewstier@uchicago.edu",
+    description="Tools for nipype",
+    # long_description=long_description,
+    # long_description_content_type="text/markdown",
+    url="https://github.com/enlberman/enlnipypetools",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
