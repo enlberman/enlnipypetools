@@ -217,7 +217,7 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
                     environ=dict(os.environ),
                     resource_monitor=False,
                     terminal_output='allatonce')
-                cmd.inputs.args = 'sbatch {outFileOption} {errFileOption} {extraSBatchArgs} {dependantIndex} -J {jobNm} {batchscript}'.format(
+                cmd.inputs.args = 'sbatch {outFileOption} {errFileOption} {extraSBatchArgs} {dependantIndex} -J {jobNm} ./{batchscript}'.format(
                     jobNm=jobname,
                     outFileOption=stdoutFile,
                     errFileOption=stderrFile,
