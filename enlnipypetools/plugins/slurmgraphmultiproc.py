@@ -210,14 +210,14 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
                 if self._sbatch_args.count('-o ') == 0:
                     stdoutFile = '-o {outFile}'.format(
                         outFile=batchscriptoutfile)
-                os.system(
-                    'sbatch {outFileOption} {errFileOption} {extraSBatchArgs} {dependantIndex} -J {jobNm} {batchscript}'.format(
-                        jobNm=jobname,
-                        outFileOption=stdoutFile,
-                        errFileOption=stderrFile,
-                        extraSBatchArgs=sbatch_args,
-                        dependantIndex=deps,
-                        batchscript=batchscriptfile))
+                # os.system(
+                #     'sbatch {outFileOption} {errFileOption} {extraSBatchArgs} {dependantIndex} -J {jobNm} {batchscript}'.format(
+                #         jobNm=jobname,
+                #         outFileOption=stdoutFile,
+                #         errFileOption=stderrFile,
+                #         extraSBatchArgs=sbatch_args,
+                #         dependantIndex=deps,
+                #         batchscript=batchscriptfile))
                 full_line = '{jobNm}=$(sbatch {outFileOption} {errFileOption} {extraSBatchArgs} {dependantIndex} -J {jobNm} {batchscript} | awk \'/^Submitted/ {{print $4}}\')\n'.format(
                     jobNm=jobname,
                     outFileOption=stdoutFile,
@@ -226,11 +226,11 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
                     dependantIndex=deps,
                     batchscript=batchscriptfile)
                 fp.writelines(full_line)
-        # cmd = CommandLine(
-        #     'bash',
-        #     environ=dict(os.environ),
-        #     resource_monitor=False,
-        #     terminal_output='allatonce')
-        # cmd.inputs.args = '%s' % submitjobsfile
-        # cmd.run()
+        cmd = CommandLine(
+            'bash',
+            environ=dict(os.environ),
+            resource_monitor=False,
+            terminal_output='allatonce')
+        cmd.inputs.args = '%s' % submitjobsfile
+        cmd.run()
         logger.info('submitted all jobs to queue')
