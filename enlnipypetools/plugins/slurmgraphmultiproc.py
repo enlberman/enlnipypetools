@@ -116,6 +116,21 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
         partitions_with_dependencies = {}
         for i in range(len(job_partitions)):
             partitions_with_dependencies.update({i: [job_partitions[i], get_dependencies_for_partition(job_partitions[i], dependencies, job_partitions)]})
+
+        def max_dep_recursive(dep, deps):
+            next_deps = partitions_with_dependencies[dep][1]
+            if len(next_deps) == 0:
+                deps.append(dep)
+            else:
+                deps.extend(next_deps)
+                for next_dep in next_deps:
+                    max_dep_recursive(next_dep, deps)
+
+        def max_dep(dep):
+            deps = []
+            max_dep_recursive(dep, deps)
+            max(deps)
+
         return partitions_with_dependencies
 
     def _submit_graph(self, pyfiles, dependencies, nodes):
