@@ -75,8 +75,14 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
                 dependency_subset.pop(idx)
             return removed_dependencies
 
+        def recursively_resolve_dependency_crashes(subset_to_uncrash, new_subsets_list):
+            subsets_to_add = remove_ids_with_dependency_within_subset(subset_to_uncrash)
+            if len(subsets_to_add) > 0:
+                new_subsets_list.append(subsets_to_add)
+                recursively_resolve_dependency_crashes(subsets_to_add, new_subsets_list)
+
         new_subsets = []
-        for subset in dependencies_by_length: new_subsets.append(remove_ids_with_dependency_within_subset(subset))
+        for subset in dependencies_by_length: recursively_resolve_dependency_crashes(subset, new_subsets)
 
         for new_subset in new_subsets:
             if len(new_subset) > 0:
