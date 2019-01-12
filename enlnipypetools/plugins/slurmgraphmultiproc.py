@@ -198,7 +198,7 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
             fp.writelines('#!/usr/bin/env bash\n')
             fp.writelines('# Condense format attempted\n')
 
-            for partition_idx, in order:
+            for partition_idx in order:
                 part = partitions[partition_idx]
                 files_for_partition = numpy.asarray(pyfiles)[part[0]]
                 file_list_string = reduce(lambda a,b: a + ',' + b, files_for_partition)
