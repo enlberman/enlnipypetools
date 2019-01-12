@@ -122,9 +122,9 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
             if len(next_deps) == 0:
                 deps.append(dep)
             else:
-                deps.extend(next_deps)
                 for next_dep in next_deps:
                     if not deps.__contains__(next_dep):
+                        deps.append(next_dep)
                         max_dep_recursive(next_dep, deps)
 
         def max_dep(dep):
