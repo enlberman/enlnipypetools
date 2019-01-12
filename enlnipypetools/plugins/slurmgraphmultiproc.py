@@ -138,7 +138,7 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
         def order_differentiate(dep, order_list):
             a = []
             max_dep_recursive(dep, a)
-            if not a[0] == dep and len(a) == 1:
+            if not (a[0] == dep and len(a) == 1):
                 original_idx = order_list.index(dep)
                 b = list(set(a))
                 same_as_max = list(map(lambda x: max_dep(x) == max(b), b))
