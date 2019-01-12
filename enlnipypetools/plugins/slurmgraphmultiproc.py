@@ -59,11 +59,6 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
     def calculate_job_partition(self, dependencies: dict):
         maximum_tasks_per_compute_node = min(self._cores_per_compute_node, int(self._mem_per_compute_node / self._max_mem_per_task))
 
-        longest_dependency_length = max(list(map(lambda value: len(value), dependencies.values())))
-        dependencies_by_length = [reduce(lambda a, b: a.update(b) or a, list(map(lambda key: {key: dependencies[key]}, (
-            filter(lambda key: len(dependencies[key]) == i, dependencies.keys())))), {}) for i in
-                                  range(longest_dependency_length + 1)]
-
         def remove_ids_with_dependency_within_subset(dependency_subset: dict):
             removed_dependencies = {}
             dependencies_for_subset = set([item for sublist in dependency_subset.values() for item in sublist])
@@ -82,11 +77,9 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
                 recursively_resolve_dependency_crashes(subsets_to_add, new_subsets_list)
 
         new_subsets = []
-        for subset in dependencies_by_length: recursively_resolve_dependency_crashes(subset, new_subsets)
-
-        for new_subset in new_subsets:
-            if len(new_subset) > 0:
-                dependencies_by_length.append(new_subset)
+        dependency_copy = dependencies.copy()
+        recursively_resolve_dependency_crashes(dependency_copy, new_subsets)
+        new_subsets.insert(0, dependency_copy)
 
         def partition_subset_by_max_jobs(subset: dict, max_jobs: int):
             subset_partition = []
@@ -99,8 +92,12 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
             if len(part) > 0: subset_partition.append(part)
             return subset_partition
 
-        job_partitions = list(map(lambda subset: partition_subset_by_max_jobs(subset, maximum_tasks_per_compute_node), dependencies_by_length))
-        job_partitions = [item for sublist in job_partitions for item in sublist]
+        job_partitions = list(map(lambda subset: partition_subset_by_max_jobs(subset, maximum_tasks_per_compute_node), new_subsets))
+
+        job_partitions_flat = []
+        for sublist in job_partitions:
+            for partition in sublist:
+                job_partitions_flat.insert(0, partition)
 
         def get_dependencies_for_partition(partition: list, deps: dict, partitions: list):
             deps_for_partition = list(map(lambda idx: deps[idx], partition))
@@ -113,46 +110,12 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
                         partition_dependencies.append(i)
                         continue
             return list(set(partition_dependencies))
+
         partitions_with_dependencies = {}
-        for i in range(len(job_partitions)):
-            partitions_with_dependencies.update({i: [job_partitions[i], get_dependencies_for_partition(job_partitions[i], dependencies, job_partitions)]})
+        for i in range(len(job_partitions_flat)):
+            partitions_with_dependencies.update({i: [job_partitions_flat[i], get_dependencies_for_partition(job_partitions_flat[i], dependencies, job_partitions_flat)]})
 
-        def max_dep_recursive(dep, deps):
-            next_deps = partitions_with_dependencies[dep][1]
-            if len(next_deps) == 0:
-                deps.append(dep)
-            else:
-                for next_dep in next_deps:
-                    if not deps.__contains__(next_dep):
-                        deps.append(next_dep)
-                        max_dep_recursive(next_dep, deps)
-
-        def max_dep(dep):
-            deps = []
-            max_dep_recursive(dep, deps)
-            max_dep_result = max(deps)
-            return max_dep_result if max_dep_result > dep else 0
-
-        job_order = sorted(partitions_with_dependencies.keys(), key=lambda v: max_dep(v))
-
-        def order_differentiate(dep, order_list):
-            a = []
-            max_dep_recursive(dep, a)
-            if not (a[0] == dep and len(a) == 1):
-                original_idx = order_list.index(dep)
-                b = list(set(a))
-                same_as_max = list(map(lambda x: max_dep(x) == max(b), b))
-                which_b_same_as_max = list(filter(lambda x: same_as_max[b.index(x)] and not x == dep, b))
-                new_order_idx = max(list(map(lambda x: job_order.index(x), which_b_same_as_max)))
-                new_order_idx = new_order_idx if new_order_idx > original_idx else original_idx
-                if not new_order_idx == original_idx:
-                    order_list.remove(dep)
-                    order_list.insert(new_order_idx, dep)
-
-        for v in job_order:
-            order_differentiate(v, job_order)
-
-        return partitions_with_dependencies, job_order
+        return partitions_with_dependencies
 
     def _submit_graph(self, pyfiles, dependencies, nodes):
         def make_job_name(partition_number, job_numbers_list, nodeslist):
@@ -173,7 +136,7 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
 
         batch_dir, _ = os.path.split(pyfiles[0])
         submitjobsfile = os.path.join(batch_dir, 'submit_jobs.sh')
-        partitions, order = self.calculate_job_partition(dependencies)
+        partitions = self.calculate_job_partition(dependencies)
 
         cache_doneness_per_node = dict()
         # if self._dont_resubmit_completed_jobs:  # A future parameter for controlling this behavior could be added here
@@ -199,7 +162,7 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
             fp.writelines('#!/usr/bin/env bash\n')
             fp.writelines('# Condense format attempted\n')
 
-            for partition_idx in order:
+            for partition_idx in sorted(partitions.keys()):
                 part = partitions[partition_idx]
                 files_for_partition = numpy.asarray(pyfiles)[part[0]]
                 file_list_string = reduce(lambda a,b: a + ',' + b, files_for_partition)
