@@ -145,8 +145,9 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
                 which_b_same_as_max = list(filter(lambda x: same_as_max[b.index(x)] and not x == dep, b))
                 new_order_idx = max(list(map(lambda x: job_order.index(x), which_b_same_as_max)))
                 new_order_idx = new_order_idx if new_order_idx > original_idx else original_idx
-                order_list.remove(dep)
-                order_list.insert(new_order_idx, dep)
+                if not new_order_idx == original_idx:
+                    order_list.remove(dep)
+                    order_list.insert(new_order_idx, dep)
 
         for v in job_order:
             order_differentiate(v, job_order)
