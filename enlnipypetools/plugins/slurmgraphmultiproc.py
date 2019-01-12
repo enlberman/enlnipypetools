@@ -124,12 +124,13 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
             else:
                 deps.extend(next_deps)
                 for next_dep in next_deps:
-                    max_dep_recursive(next_dep, deps)
+                    if not deps.__contains__(next_dep):
+                        max_dep_recursive(next_dep, deps)
 
         def max_dep(dep):
             deps = []
             max_dep_recursive(dep, deps)
-            max(deps)
+            return max(deps)
 
         return partitions_with_dependencies
 
