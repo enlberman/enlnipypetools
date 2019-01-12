@@ -132,8 +132,26 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
             max_dep_recursive(dep, deps)
             max_dep_result = max(deps)
             return max_dep_result if max_dep_result > dep else 0
+
         job_order = sorted(partitions_with_dependencies.keys(), key=lambda v: max_dep(v))
-        return partitions_with_dependencies
+
+        def order_differentiate(dep, order_list):
+            a = []
+            max_dep_recursive(dep, a)
+            if not a[0] == dep and len(a) == 1:
+                original_idx = order_list.index(dep)
+                b = list(set(a))
+                same_as_max = list(map(lambda x: max_dep(x) == max(b), b))
+                which_b_same_as_max = list(filter(lambda x: same_as_max[b.index(x)] and not x == dep, b))
+                new_order_idx = max(list(map(lambda x: job_order.index(x), which_b_same_as_max)))
+                new_order_idx = new_order_idx if new_order_idx > original_idx else original_idx
+                order_list.remove(dep)
+                order_list.insert(new_order_idx, dep)
+
+        for v in job_order:
+            order_differentiate(v, job_order)
+
+        return partitions_with_dependencies, job_order
 
     def _submit_graph(self, pyfiles, dependencies, nodes):
         def make_job_name(partition_number, job_numbers_list, nodeslist):
@@ -154,7 +172,7 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
 
         batch_dir, _ = os.path.split(pyfiles[0])
         submitjobsfile = os.path.join(batch_dir, 'submit_jobs.sh')
-        partitions = self.calculate_job_partition(dependencies)
+        partitions, order = self.calculate_job_partition(dependencies)
 
         cache_doneness_per_node = dict()
         # if self._dont_resubmit_completed_jobs:  # A future parameter for controlling this behavior could be added here
@@ -180,13 +198,14 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
             fp.writelines('#!/usr/bin/env bash\n')
             fp.writelines('# Condense format attempted\n')
 
-            for partition_idx, part in partitions.items():
+            for partition_idx, in order:
+                part = partitions[partition_idx]
                 files_for_partition = numpy.asarray(pyfiles)[part[0]]
                 file_list_string = reduce(lambda a,b: a + ',' + b, files_for_partition)
                 partition_command = COMMAND + '"' + file_list_string + '"'
 
                 batch_dir, name = os.path.split(files_for_partition[0])
-                name = '.'.join(name.split('.')[:-1])
+
                 template, sbatch_args = self._get_args(
                     nodes[part[0][0]], ["template", "sbatch_args"])
 
@@ -227,26 +246,19 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
                 if self._sbatch_args.count('-o ') == 0:
                     stdoutFile = '-o {outFile}'.format(
                         outFile=batchscriptoutfile)
-                # full_line = '{jobNm}=$(sbatch {outFileOption} {errFileOption} {extraSBatchArgs} {dependantIndex} -J {jobNm} {batchscript} | awk \'/^Submitted/ {{print $4}}\')\n'.format(
-                #     jobNm=jobname,
-                #     outFileOption=stdoutFile,
-                #     errFileOption=stderrFile,
-                #     extraSBatchArgs=sbatch_args,
-                #     dependantIndex=deps,
-                #     batchscript=batchscriptfile)
-                # fp.writelines(full_line)
-                os.system('sbatch {outFileOption} {errFileOption} {extraSBatchArgs} {dependantIndex} -J {jobNm} {batchscript}'.format(
+                full_line = '{jobNm}=$(sbatch {outFileOption} {errFileOption} {extraSBatchArgs} {dependantIndex} -J {jobNm} {batchscript} | awk \'/^Submitted/ {{print $4}}\')\n'.format(
                     jobNm=jobname,
                     outFileOption=stdoutFile,
                     errFileOption=stderrFile,
                     extraSBatchArgs=sbatch_args,
                     dependantIndex=deps,
-                    batchscript=batchscriptfile))
-        # cmd = CommandLine(
-        #     'bash',
-        #     environ=dict(os.environ),
-        #     resource_monitor=False,
-        #     terminal_output='allatonce')
-        # cmd.inputs.args = '%s' % submitjobsfile
-        # cmd.run()
+                    batchscript=batchscriptfile)
+                fp.writelines(full_line)
+        cmd = CommandLine(
+            'bash',
+            environ=dict(os.environ),
+            resource_monitor=False,
+            terminal_output='allatonce')
+        cmd.inputs.args = '%s' % submitjobsfile
+        cmd.run()
         logger.info('submitted all jobs to queue')
