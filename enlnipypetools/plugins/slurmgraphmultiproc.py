@@ -130,8 +130,9 @@ class SLURMGraphMultiProcPlugin(SLURMGraphPlugin):
         def max_dep(dep):
             deps = []
             max_dep_recursive(dep, deps)
-            return max(deps)
-
+            max_dep_result = max(deps)
+            return max_dep_result if max_dep_result > dep else 0
+        job_order = sorted(partitions_with_dependencies.keys(), key=lambda v: max_dep(v))
         return partitions_with_dependencies
 
     def _submit_graph(self, pyfiles, dependencies, nodes):
